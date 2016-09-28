@@ -1,0 +1,57 @@
+http://blog.csdn.net/chuyuqing/article/details/28879477
+
+
+
+上面程序，在本地调试（使用LocalCluster）不需要输入任何参数，提交到实际集群中运行时，需要传递一个参数，该参数为Nimbus的主机名称。
+通过Maven构建，生成一个包含依赖的single jar文件（不要把Storm的依赖包添加进去），例如storm-examples-0.0.1-SNAPSHOT.jar，在提交Topology程序到Storm集群之前，因为用到了Kafka，需要拷贝一下依赖jar文件到Storm集群中的lib目录下面：
+
+cp /usr/local/kafka/libs/kafka_2.9.2-0.8.1.1.jar /usr/local/storm/lib/
+cp /usr/local/kafka/libs/scala-library-2.9.2.jar /usr/local/storm/lib/
+cp /usr/local/kafka/libs/metrics-core-2.2.0.jar /usr/local/storm/lib/
+cp /usr/local/kafka/libs/snappy-java-1.0.5.jar /usr/local/storm/lib/
+cp /usr/local/kafka/libs/zkclient-0.3.jar /usr/local/storm/lib/
+cp /usr/local/kafka/libs/log4j-1.2.15.jar /usr/local/storm/lib/
+cp /usr/local/kafka/libs/slf4j-api-1.7.2.jar /usr/local/storm/lib/
+cp /usr/local/kafka/libs/jopt-simple-3.2.jar /usr/local/storm/lib/
+
+将storm 下的external 下的storm-kafka-0.9.6.jar 复制到 lib 里面,重启storm nimbus 及 supervisor
+cp  external/storm-kafka/storm-kafka-0.9.6.jar  lib/
+
+提交开发的程序,只需提交一次，strom会上传jar h1 代表zook
+bin/storm jar /home/storm/storm-examples-0.0.1-SNAPSHOT.jar org.shirdrn.storm.examples.MyKafkaTopology h1
+
+bin/storm jar /home/apache-storm-0.9.6/stormjob-0.0.1-SNAPSHOT.jar  main.MyKafkaTopology 172.30.80.45 
+
+问题:
+http://blog.csdn.net/shj1119/article/details/48826619
+
+执行后查看 UI 
+java.lang.NoClassDefFoundError: org/apache/curator/RetryPolicy
+从本地maven库找到curator-client-2.7.1.jar curator-framework-2.7.1.jar拷到storm lib 下面
+
+
+java.lang.NoClassDefFoundError: com/google/common/base/Preconditions
+给pom.xml中配置 
+<dependency>
+    <groupId>com.google.guava</groupId>
+    <artifactId>guava</artifactId>
+    <version>11.0.2</version>
+</dependency>
+下载到本地
+从maven 中找到guava-11.0.2.jar 拷到storm lib 下面 重启 storm nimbus supervisor
+
+查看拓扑程序日志
+supervisor 中的  logs/work-*.log 
+
+kafka 模拟生产者产生了  dd 5 次  cc 3 次 test 1次  ,看到work-6702.log日志实时输出如下 
+
+2016-08-02T09:31:26.126-0400 m.MyKafkaTopology$WordCounter [INFO] CHECK statistics map: {dd=5, cc=3}
+2016-08-02T09:31:33.118-0400 m.MyKafkaTopology$WordCounter [INFO] RECV[splitter -> counter] test : 1
+2016-08-02T09:31:33.118-0400 m.MyKafkaTopology$WordCounter [INFO] CHECK statistics map: {dd=5, test=1, cc=3}
+
+
+zookeeper 报错
+ Path:/storm/word Error:KeeperErrorCode = NoNode for /storm/word
+
+
+

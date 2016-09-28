@@ -1,0 +1,163 @@
+flume 
+agent 由 source、sink、channel 组成
+
+source 代表数据源, 可以有多种 exec  file 
+channel 代表数据通道 代表事件存储的方式,Source 产生事件，sink 移除事件，以此代表数据传输完成
+sink 代表数据发送目的地 ,常见的有dhfs  file  HBase 
+     要输出到kafka 等mq 需要安装相关插件
+
+数据流方向
+source -> channel -> sink 
+
+
+capacity  管道里可以存放的最多的事件数目
+
+
+flume + kafka + storm 组合, storm 计算的数据存放到mysql 供前端展现
+http://dataunion.org/19045.html
+
+------------------------------------------------------
+ #conf/flume-conf.properties  配置
+
+ tier1.sources  = source1
+ tier1.channels = channel1
+ tier1.sinks = sink1
+
+ tier1.sources.source1.type = exec
+ tier1.sources.source1.command = /usr/bin/vmstat 1
+ #tier1.sources.source1.command = tail -F /var/log/nginx/access.log
+ tier1.sources.source1.channels = channel1
+
+ tier1.channels.channel1.type = memory
+ tier1.channels.channel1.capacity = 10000
+ tier1.channels.channel1.transactionCapacity = 1000
+
+ tier1.sinks.sink1.type = org.apache.flume.sink.kafka.KafkaSink
+ tier1.sinks.sink1.topic = sink1
+ tier1.sinks.sink1.brokerList = kafka01.example.com:9092,kafka02.example.com:9092
+ #tier1.sinks.sink1.brokerList = kafka01.example.com:9092,kafka02.example.com:9092
+ tier1.sinks.sink1.channel = channel1
+ tier1.sinks.sink1.batchSize = 20        
+
+
+启动flume-ng 
+bin/flume-ng agent --conf conf --conf-file conf/flume-conf.properties --name tier1 -Dflume.root.logger=INFO,console  
+
+启动后flume 会发数据到kafka,可通过kafka的 kafka-console-consumer.sh 查看产生的数据
+
+
+和kafka 集成配置示例  kafka一般作为flume 数据sink目的地，缓存数据，然后再发送到storm 
+https://www.cloudera.com/documentation/kafka/latest/topics/kafka_flume.html#concept_rsb_tyb_kv__section_zgc_tyb_kv
+
+------------------------------------------------------------------
+kafka 安装
+wget http://apache.fayea.com/kafka/0.8.2.2/kafka_2.91-0.8.2.2.tgz
+  tar -xzf kafka_2.10-0.8.2.0.tgz
+  kafka需要zookeepr，如果环境中没有安装好的zookeper的话，可以使用以下命令获得一个单一实例的zookeeper
+  bin/zookeeper-server-start.sh config/zookeeper.properties &
+
+  然后启动kafka
+  bin/kafka-server-start.sh config/server.properties &
+
+  创建topic 一个副本 一个分区名为sink1的topic
+  bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic sink1
+
+
+   查询topic  看是否有刚建立的sink1 topic 
+  bin/kafka-topics.sh --list --zookeeper localhost:2181
+
+  模拟生成者
+ bin/kafka-console-producer.sh --broker-list localhost:9092 --topic sink1
+
+  启动topic=sink1的消费者窗口,可以查看收到的消息
+  bin/kafka-console-consumer.sh --zookeeper localhost:2181 --topic sink1 --from-beginning
+
+  
+  kafka 默认监听在hostname 上，如果需要改为监听在指定的ip上
+   server*.properties中修改相应的配置
+     host.name=10.2.35.50
+     advertised.host.name=10.2.35.50
+
+  完成之后测试是否从别的机器到本机的9092 端口通信正常，一般来说iptables 会阻止，关闭即可
+
+
+--------------------------------------------------------------------------------------
+storm 解压后赋予账户权限  chown -R 账户:组
+storm 运行  
+storm.yaml 文件内容:
+
+storm.zookeeper.servers:
+     - "localhost"
+storm.local.dir: "/mnt/storm"
+nimbus.host: "172.30.80.45"
+nimbus.seeds: ["172.30.80.45"]
+supervisor.slots.ports:
+    - 6700
+    - 6701
+    - 6702
+    - 6703
+
+
+nimbus 节点启动
+bin/storm nimbus
+
+supervision 节点启动
+bin/storm supervisor
+启动UI 可以在supervisor节点上启动,通过supervisor 地址8080访问 
+bin/storm ui
+
+Nimbus: Run the command "bin/storm nimbus" under supervision on the master machine.
+Supervisor: Run the command "bin/storm supervisor" under supervision on each worker machine. The supervisor daemon is responsible for starting and stopping worker processes on that machine.
+UI: Run the Storm UI (a site you can access from the browser that gives diagnostics on the cluster and topologies) by running the command "bin/storm ui" under supervision. The UI can be accessed by navigating your web browser to http://{ui host}:8080.
+
+遇到问题： 主机名与ip地址 /etc/hosts 中没有配置，导致启动时找不到主机名对应的ip
+
+
+一个storm 参考配置
+storm.local.dir: "/dianyi/app/storm/storm-local"
+storm.zookeeper.servers:
+    - "10.1.2.2"
+    - "10.1.2.3"
+    - "10.1.2.4"
+storm.zookeeper.port: 2181
+storm.zookeeper.root: "/storm-hbase"
+storm.cluster.mode: "distributed"
+storm.log.dir: "/logdata/storm"
+logviewer.port: 60099
+logviewer.appender.name: "A1"
+ui.port: 9999
+topology.debug: false
+topology.executor.receive.buffer.size: 16384
+topology.executor.send.buffer.size: 16384
+topology.worker.receiver.thread.count: 4
+storm.messaging.netty.server_worker_threads: 4
+storm.messaging.netty.client_worker_threads: 4
+storm.messaging.transport: "backtype.storm.messaging.netty.Context"
+storm.messaging.netty.buffer_size: 52428800
+storm.messaging.netty.max_retries: 10
+storm.messaging.netty.min_wait_ms: 5000
+storm.messaging.netty.max_wait_ms: 10000
+nimbus.host: xxx
+nimbus.childopts: "-Xmx2048m -Xms2048m -Xmn500m -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseCompressedOops -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSClassUnloadingEnabled -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0 -XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:SoftRefLRUPolicyMSPerMB=0 -XX:+CMSConcurrentMTEnabled -Djava.net.preferIPv4Stack=true"
+supervisor.childopts: "-Xmx2048m -Xms2048m -Xmn500m -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseCompressedOops -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSClassUnloadingEnabled -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0 -XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:SoftRefLRUPolicyMSPerMB=0 -XX:+CMSConcurrentMTEnabled -Djava.net.preferIPv4Stack=true"
+ui.childopts: "-Xmx2048m -Xms2048m -Xmn500m -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseCompressedOops -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSClassUnloadingEnabled -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0 -XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:SoftRefLRUPolicyMSPerMB=0 -XX:+CMSConcurrentMTEnabled -Djava.net.preferIPv4Stack=true"
+worker.childopts: "-Xmx2048m -Xms2048m -Xmn500m -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseCompressedOops -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+CMSClassUnloadingEnabled -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0 -XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70 -XX:SoftRefLRUPolicyMSPerMB=0 -XX:+CMSConcurrentMTEnabled -Djava.net.preferIPv4Stack=true"
+supervisor.slots.ports:
+      - 6700
+      - 6701
+      - 6702
+      - 6703
+      - 6704
+nimbus.host: "10.1.2.1"
+
+-----------------------------------------------
+
+
+flume 1.6
+kafka_2.9.1-0.8.2.2  
+apache-storm-0.9.6
+
+
+
+CDH-5.4.9-1.cdh5.4.9.p0.19  
+KAFKA-0.8.2.0-1.kafka1.3.1.p0.9

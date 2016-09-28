@@ -1,0 +1,8 @@
+OpenJDK 64-Bit Server VM (24.95-b01) for linux-amd64 JRE (1.7.0_101-b00), built on Apr 21 2016 13:32:28 by "mockbuild" with gcc 4.4.7 20120313 (Red Hat 4.4.7-16)
+Memory: 4k page, physical 1032924k(704976k free), swap 3145724k(3145724k free)
+CommandLine flags: -XX:+CMSClassUnloadingEnabled -XX:+CMSScavengeBeforeRemark -XX:+DisableExplicitGC -XX:InitialHeapSize=536870912 -XX:+ManagementServer -XX:MaxHeapSize=536870912 -XX:MaxNewSize=87244800 -XX:MaxTenuringThreshold=6 -XX:NewSize=87244800 -XX:OldPLABSize=16 -XX:OldSize=174489600 -XX:+PrintGC -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+UseCompressedOops -XX:+UseConcMarkSweepGC -XX:-UseParNewGC 
+2016-08-10T07:12:16.826-0400: 4.460: [GC2016-08-10T07:12:16.826-0400: 4.460: [DefNew: 68160K->6706K(76672K), 0.0570480 secs] 68160K->6706K(515776K), 0.0572560 secs] [Times: user=0.01 sys=0.04, real=0.06 secs] 
+2016-08-10T07:12:17.245-0400: 4.880: [GC2016-08-10T07:12:17.245-0400: 4.880: [DefNew: 74866K->3849K(76672K), 0.0368270 secs] 74866K->5118K(515776K), 0.0369340 secs] [Times: user=0.01 sys=0.03, real=0.04 secs] 
+2016-08-10T07:20:04.371-0400: 472.006: [GC2016-08-10T07:20:04.371-0400: 472.006: [DefNew: 72009K->5556K(76672K), 0.0138020 secs] 73278K->6825K(515776K), 0.0139410 secs] [Times: user=0.01 sys=0.00, real=0.01 secs] 
+2016-08-10T07:29:57.090-0400: 1064.725: [GC2016-08-10T07:29:57.090-0400: 1064.725: [DefNew: 73716K->8512K(76672K), 0.0499600 secs] 74985K->10039K(515776K), 0.0500550 secs] [Times: user=0.02 sys=0.02, real=0.05 secs] 
+2016-08-10T07:38:47.718-0400: 1595.353: [GC2016-08-10T07:38:47.718-0400: 1595.353: [DefNew: 76672K->8512K(76672K), 0.0206970 secs] 78199K->11373K(515776K), 0.0207970 secs] [Times: user=0.01 sys=0.00, real=0.02 secs] 
